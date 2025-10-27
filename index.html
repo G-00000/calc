@@ -1,2 +1,287 @@
-# Meu Projeto
-Primeiro commit.
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculadora</title>
+    <style>
+        :root {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4f8;
+            color: #1f2933;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .calculator {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+            overflow: hidden;
+            width: min(90vw, 360px);
+        }
+
+        .display {
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            color: #f8fafc;
+            padding: 24px;
+            text-align: right;
+        }
+
+        .display .expression {
+            font-size: 1rem;
+            opacity: 0.8;
+            min-height: 1.4em;
+        }
+
+        .display .result {
+            font-size: 2.5rem;
+            font-weight: 600;
+            min-height: 1.3em;
+        }
+
+        .keys {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: #e2e8f0;
+        }
+
+        button {
+            background: #ffffff;
+            border: none;
+            padding: 20px 0;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+        }
+
+        button:hover {
+            background: #f1f5f9;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        .operator {
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .operator:hover {
+            background: #dbeafe;
+        }
+
+        .action {
+            background: #fef2f2;
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .action:hover {
+            background: #fee2e2;
+        }
+
+        .equals {
+            grid-column: span 2;
+            background: #1d4ed8;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .equals:hover {
+            background: #1e3a8a;
+        }
+    </style>
+</head>
+<body>
+    <main class="calculator" aria-label="Calculadora">
+        <section class="display" aria-live="polite">
+            <div class="expression" id="expression"></div>
+            <div class="result" id="result">0</div>
+        </section>
+        <div class="keys" role="grid">
+            <button class="action" data-action="clear">C</button>
+            <button class="action" data-action="backspace">⌫</button>
+            <button class="operator" data-value="%">%</button>
+            <button class="operator" data-value="/">÷</button>
+
+            <button data-value="7">7</button>
+            <button data-value="8">8</button>
+            <button data-value="9">9</button>
+            <button class="operator" data-value="*">×</button>
+
+            <button data-value="4">4</button>
+            <button data-value="5">5</button>
+            <button data-value="6">6</button>
+            <button class="operator" data-value="-">−</button>
+
+            <button data-value="1">1</button>
+            <button data-value="2">2</button>
+            <button data-value="3">3</button>
+            <button class="operator" data-value="+">+</button>
+
+            <button data-value="0">0</button>
+            <button data-value=",">,</button>
+            <button class="equals" data-action="equals">=</button>
+        </div>
+    </main>
+    <script>
+        (function () {
+            const expressionEl = document.getElementById("expression");
+            const resultEl = document.getElementById("result");
+            const keys = document.querySelector(".keys");
+
+            const decimalSeparator = ",";
+            const operators = new Set(["+", "-", "*", "/", "%"]);
+
+            let expression = "";
+            let lastResult = null;
+
+            const formatNumber = (value) => {
+                const number = Number(value);
+                if (Number.isNaN(number)) {
+                    return value;
+                }
+
+                return number
+                    .toLocaleString("pt-BR", {
+                        useGrouping: true,
+                        maximumFractionDigits: 10,
+                    })
+                    .replace(".", decimalSeparator);
+            };
+
+            const updateDisplay = () => {
+                expressionEl.textContent = expression
+                    .replace(/\//g, "÷")
+                    .replace(/\*/g, "×");
+                resultEl.textContent = expression ? resultEl.textContent : "0";
+            };
+
+            const calculate = () => {
+                if (!expression) {
+                    return;
+                }
+
+                const sanitized = expression
+                    .replace(/,/g, ".")
+                    .replace(/%/g, "/100");
+
+                try {
+                    const value = Function(`"use strict"; return (${sanitized});`)();
+                    if (Number.isFinite(value)) {
+                        lastResult = value;
+                        resultEl.textContent = formatNumber(value);
+                    } else {
+                        resultEl.textContent = "Erro";
+                    }
+                } catch (error) {
+                    resultEl.textContent = "Erro";
+                }
+            };
+
+            const appendValue = (value) => {
+                if (operators.has(value)) {
+                    if (!expression || operators.has(expression.slice(-1))) {
+                        return;
+                    }
+                }
+
+                if (value === ",") {
+                    const parts = expression.split(/[-+*/%]/);
+                    const current = parts[parts.length - 1];
+                    if (current.includes(",")) {
+                        return;
+                    }
+                }
+
+                expression += value;
+                updateDisplay();
+            };
+
+            const handleAction = (action) => {
+                switch (action) {
+                    case "clear":
+                        expression = "";
+                        lastResult = null;
+                        resultEl.textContent = "0";
+                        updateDisplay();
+                        break;
+                    case "backspace":
+                        if (!expression) {
+                            return;
+                        }
+                        expression = expression.slice(0, -1);
+                        updateDisplay();
+                        break;
+                    case "equals":
+                        calculate();
+                        break;
+                }
+            };
+
+            keys.addEventListener("click", (event) => {
+                const button = event.target.closest("button");
+                if (!button) return;
+
+                const action = button.dataset.action;
+                const value = button.dataset.value;
+
+                if (action) {
+                    handleAction(action);
+                    return;
+                }
+
+                if (value !== undefined) {
+                    appendValue(value);
+                }
+            });
+
+            document.addEventListener("keydown", (event) => {
+                const { key } = event;
+
+                if (key === "Enter" || key === "=") {
+                    event.preventDefault();
+                    handleAction("equals");
+                    return;
+                }
+
+                if (key === "Backspace") {
+                    handleAction("backspace");
+                    return;
+                }
+
+                if (key === "Escape") {
+                    handleAction("clear");
+                    return;
+                }
+
+                if (operators.has(key)) {
+                    appendValue(key);
+                    return;
+                }
+
+                if (key === "." || key === ",") {
+                    appendValue(",");
+                    return;
+                }
+
+                if (/\d/.test(key)) {
+                    appendValue(key);
+                }
+            });
+
+            updateDisplay();
+        })();
+    </script>
+</body>
+</html>
